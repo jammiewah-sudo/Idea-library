@@ -250,7 +250,9 @@ function openForm(title,fields,onSave){
   const id="modalField"+i;
   let control="";
   if(f.type==="select"){
-   control=`<select id="${id}">${f.options.map(o=>`<option value="${esc(o.value)}" ${String(o.value)===String(f.value)?"selected":""}>${esc(o.label)}</option>`).join("")}</select>`;
+   const known=f.options.some(o=>String(o.value)===String(f.value));
+   const useCustom=!!f.custom;
+   control=`<select id="${id}" ${useCustom?`onchange="toggleCustomField('${id}')"`:""}>${f.options.map(o=>`<option value="${esc(o.value)}" ${String(o.value)===String(f.value)?"selected":""}>${esc(o.label)}</option>`).join("")}${useCustom?`<option value="__custom__" ${!known?"selected":""}>＋ 自行輸入／其他</option>`:""}</select>${useCustom?`<input id="${id}Custom" class="${known?"hidden":""}" type="text" value="${!known?esc(f.value||""):""}" placeholder="請輸入自訂內容" style="margin-top:8px">`:""}`;
   }else if(f.type==="textarea"){
    control=`<textarea id="${id}" rows="4" placeholder="${esc(f.placeholder||"")}">${esc(f.value||"")}</textarea>`;
   }else{
@@ -264,7 +266,12 @@ function openForm(title,fields,onSave){
  modal.onclick=e=>{if(e.target===modal)closeForm()};
  document.getElementById("modalForm").onsubmit=e=>{
   e.preventDefault();
-  const values=fields.map((f,i)=>document.getElementById("modalField"+i).value.trim());
+  const values=fields.map((f,i)=>{
+   const control=document.getElementById("modalField"+i);
+   return f.type==="select"&&f.custom&&control.value==="__custom__"
+    ?document.getElementById("modalField"+i+"Custom").value.trim()
+    :control.value.trim();
+  });
   if(fields.some((f,i)=>f.required&&!values[i])){alert("請填寫必填欄位");return}
   closeForm();onSave(values);
  };
@@ -273,6 +280,10 @@ function openForm(title,fields,onSave){
 function closeForm(){
  const modal=document.getElementById("formModal");
  modal.classList.add("hidden");modal.innerHTML="";
+}
+function toggleCustomField(id){
+ const select=document.getElementById(id),input=document.getElementById(id+"Custom");
+ if(select&&input){input.classList.toggle("hidden",select.value!=="__custom__");if(select.value==="__custom__")input.focus()}
 }
 function selectOptions(values){return values.map(v=>({label:v,value:v}))}
 
@@ -285,10 +296,10 @@ function projectForm(p={}){
  const isEdit=!!editId;
  openForm(isEdit?"編輯 Project":"新增 Project",[
   {label:"Project 名稱",value:p.name||"",required:true},
-  {label:"代表圖案",type:"select",value:p.icon||"💡",options:selectOptions(["💡","🌷","☕","🐾","🛍️","🎨","💻","🍰","📦","✨"])},
+  {label:"代表圖案",type:"select",value:p.icon||"💡",custom:true,options:selectOptions(['💡','🌷','☕','🐾','🛍️','🎨','💻','🍰','📦','✨','🌸','🌿','🍃','🌻','🌼','🌺','🪴','🌵','🍀','🦋','🐶','🐱','🐰','🐻','🐼','🦊','🐣','🐥','🐟','🐠','🦜','🐢','🦴','🧸','🎀','💗','💕','💖','🍓','🍒','🍑','🍋','🍊','🍉','🍇','🥑','🥐','🥯','🍞','🧁','🍪','🍩','🍫','🍵','🧋','🥤','🍽️','🍴','🧵','🪡','🧶','✂️','🖌️','🖍️','🧩','🎁','🪄','📷','📚','✏️','📝','📌','📎','🗂️','📊','📈','💰','🏡','🏠','🏢','🏪','🏬','🚀','⭐','🌙','☀️','⚡','🔥','💎','👑','🎯','🎉','🎊','🤍','🩷','🩵','🪷'])},
   {label:"簡介",type:"textarea",value:p.desc||""},
-  {label:"分類",type:"select",value:p.category||"其他",options:selectOptions(categories)},
-  {label:"狀態",type:"select",value:p.status||statuses[0],options:selectOptions(statuses)}
+  {label:"分類",type:"select",value:p.category||"其他",custom:true,options:selectOptions(categories)},
+  {label:"狀態",type:"select",value:p.status||statuses[0],custom:true,options:selectOptions(statuses)}
  ],values=>{
   const [name,icon,desc,category,status]=values;
   if(isEdit){
@@ -425,8 +436,8 @@ function addFinance(id=null){
  openForm(old?"編輯財務紀錄":"新增財務紀錄",[
   {label:"項目名稱",value:old?.title||"",required:true},
   {label:"金額",type:"number",value:old?.amount??"",required:true},
-  {label:"幣種",type:"select",value:old?.currency||"CAD",options:selectOptions(["CAD","HKD","USD","JPY","CNY","EUR"])},
-  {label:"類型",type:"select",value:old?.type||"支出",options:selectOptions(["預算","支出","收入"])},
+  {label:"幣種",type:"select",value:old?.currency||"CAD",custom:true,options:selectOptions(["CAD","HKD","USD","JPY","CNY","EUR"])},
+  {label:"類型",type:"select",value:old?.type||"支出",custom:true,options:selectOptions(["預算","支出","收入"])},
   {label:"備註",type:"textarea",value:old?.note||""}
  ],values=>{
   const [title,amountText,currency,type,note]=values;
@@ -455,7 +466,7 @@ function addTodo(id=null){
  openForm(old?"編輯待辦事項":"新增待辦事項",[
   {label:"待辦事項",value:old?.title||"",required:true},
   {label:"備註",type:"textarea",value:old?.note||""},
-  {label:"優先程度",type:"select",value:old?.priority||"中",options:selectOptions(["高","中","低"])}
+  {label:"優先程度",type:"select",value:old?.priority||"中",custom:true,options:selectOptions(["高","中","低"])}
  ],values=>{
   const [title,note,priority]=values;
   if(old)Object.assign(old,{title,note,priority});
