@@ -456,9 +456,16 @@ function addFinance(id=null){
 
 function renderTodos(){
  const p=current();
+ // 按優先程度排序：高 → 中 → 低；自訂程度排在其後，同級維持原有次序
+ const priorityRank={ "高":0, "中":1, "低":2 };
+ const sortedTodos=p.todos.map((todo,index)=>({todo,index})).sort((a,b)=>{
+  const rankA=priorityRank[a.todo.priority]??3;
+  const rankB=priorityRank[b.todo.priority]??3;
+  return rankA-rankB || a.index-b.index;
+ }).map(entry=>entry.todo);
  document.getElementById("tabContent").innerHTML=`
  <div class="panel"><div class="topbar"><h3>☑️ 待辦事項</h3><button class="btn small" onclick="addTodo()">＋ 新增待辦</button></div>
- ${p.todos.length?p.todos.map(x=>`<div class="item">
+ ${sortedTodos.length?sortedTodos.map(x=>`<div class="item">
   <div class="item-top"><h4 class="${x.done?'todo-done':''}">${x.done?'✓ ':''}${esc(x.title)}</h4><span class="pill">${esc(x.priority)}</span></div>
   <p>${esc(x.note||"")}</p>
   <div class="item-actions"><button class="btn green small" onclick="toggleTodo('${x.id}')">${x.done?"重新開啟":"完成"}</button><button class="btn secondary small" onclick="addTodo('${x.id}')">編輯</button><button class="btn danger small" onclick="removeItem('todos','${x.id}')">刪除</button></div>
