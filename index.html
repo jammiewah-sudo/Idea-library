@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#fff1f5">
-<title>My Idea Library</title>
+<title>我的創業靈感庫</title>
 <style>
 :root {
   --pink:#ed9db5;
@@ -116,6 +116,15 @@ footer{text-align:center;color:#c2a9b2;font-size:11px;padding:25px}
  .stats{gap:7px}
  .stat{padding:12px 5px}
 }
+
+.modal-backdrop{position:fixed;inset:0;background:rgba(75,43,57,.35);display:flex;align-items:center;justify-content:center;padding:16px;z-index:999}
+.modal{width:min(520px,100%);max-height:90vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 18px 60px rgba(80,40,55,.18)}
+.modal h3{margin:0 0 16px;font-size:18px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.modal .field{margin-bottom:13px}
+.modal label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+.modal input,.modal textarea,.modal select{width:100%}
+
 </style>
 </head>
 <body>
@@ -180,6 +189,7 @@ footer{text-align:center;color:#c2a9b2;font-size:11px;padding:25px}
   <div id="tabContent"></div>
  </section>
 </main>
+<div id="formModal" class="modal-backdrop hidden" role="dialog" aria-modal="true"></div>
 <footer>Made with ♡ for all your little big ideas</footer>
 
 <script>
@@ -233,32 +243,65 @@ function renderHome(){
   <div class="muted" style="margin-top:10px">📝 ${(p.notes||[]).length} 筆筆記　☑️ ${(p.todos||[]).length} 項待辦</div>
  </div>`).join("");
 }
+
+function openForm(title,fields,onSave){
+ const modal=document.getElementById("formModal");
+ const controls=fields.map((f,i)=>{
+  const id="modalField"+i;
+  let control="";
+  if(f.type==="select"){
+   control=`<select id="${id}">${f.options.map(o=>`<option value="${esc(o.value)}" ${String(o.value)===String(f.value)?"selected":""}>${esc(o.label)}</option>`).join("")}</select>`;
+  }else if(f.type==="textarea"){
+   control=`<textarea id="${id}" rows="4" placeholder="${esc(f.placeholder||"")}">${esc(f.value||"")}</textarea>`;
+  }else{
+   control=`<input id="${id}" type="${f.type||"text"}" value="${esc(f.value??"")}" placeholder="${esc(f.placeholder||"")}">`;
+  }
+  return `<div class="field"><label for="${id}">${esc(f.label)}${f.required?" *":""}</label>${control}</div>`;
+ }).join("");
+ modal.innerHTML=`<div class="modal"><h3>${esc(title)}</h3><form id="modalForm">${controls}<div class="modal-actions"><button type="button" class="btn secondary" id="modalCancel">取消</button><button type="submit" class="btn">儲存</button></div></form></div>`;
+ modal.classList.remove("hidden");
+ document.getElementById("modalCancel").onclick=closeForm;
+ modal.onclick=e=>{if(e.target===modal)closeForm()};
+ document.getElementById("modalForm").onsubmit=e=>{
+  e.preventDefault();
+  const values=fields.map((f,i)=>document.getElementById("modalField"+i).value.trim());
+  if(fields.some((f,i)=>f.required&&!values[i])){alert("請填寫必填欄位");return}
+  closeForm();onSave(values);
+ };
+ const first=modal.querySelector("input,textarea,select");if(first)first.focus();
+}
+function closeForm(){
+ const modal=document.getElementById("formModal");
+ modal.classList.add("hidden");modal.innerHTML="";
+}
+function selectOptions(values){return values.map(v=>({label:v,value:v}))}
+
 function newProject(){
  editId=null;
  projectForm();
 }
+
 function projectForm(p={}){
- const name=prompt("Project 名稱：",p.name||"");
- if(name===null)return;
- if(!name.trim()){alert("請輸入 Project 名稱");return}
- const icon=prompt("選擇一個代表圖案：",p.icon||"💡");
- if(icon===null)return;
- const desc=prompt("簡單介紹一下呢個 Project：",p.desc||"");
- if(desc===null)return;
- const category=prompt("分類：餐飲／寵物／網店／服務／手作／設計／科技／其他",p.category||"其他");
- if(category===null)return;
- const status=prompt("狀態：\n"+statuses.join("\n"),p.status||statuses[0]);
- if(status===null)return;
- if(editId){
-  const old=projects.find(x=>x.id===editId);
-  Object.assign(old,{name:name.trim(),icon,desc,category,status});
-  save();renderHome();
- }else{
-  const obj={id:uid(),name:name.trim(),icon,desc,category,status,created:Date.now(),
-   notes:[],market:[],finance:[],todos:[],inspire:[],timeline:[]};
-  projects.unshift(obj);save();renderHome();
- }
+ const isEdit=!!editId;
+ openForm(isEdit?"編輯 Project":"新增 Project",[
+  {label:"Project 名稱",value:p.name||"",required:true},
+  {label:"代表圖案",type:"select",value:p.icon||"💡",options:selectOptions(["💡","🌷","☕","🐾","🛍️","🎨","💻","🍰","📦","✨"])},
+  {label:"簡介",type:"textarea",value:p.desc||""},
+  {label:"分類",type:"select",value:p.category||"其他",options:selectOptions(categories)},
+  {label:"狀態",type:"select",value:p.status||statuses[0],options:selectOptions(statuses)}
+ ],values=>{
+  const [name,icon,desc,category,status]=values;
+  if(isEdit){
+   const old=projects.find(x=>x.id===editId);
+   Object.assign(old,{name,icon,desc,category,status});
+  }else{
+   projects.unshift({id:uid(),name,icon,desc,category,status,created:Date.now(),
+    notes:[],market:[],finance:[],todos:[],inspire:[],timeline:[]});
+  }
+  editId=null;save();renderHome();
+ });
 }
+
 function openProject(id){
  currentId=id;currentTab="overview";
  document.getElementById("home").classList.add("hidden");
@@ -334,15 +377,22 @@ function renderCollection(key,title,addLabel,placeholder1,placeholder2){
  <div class="item-actions"><button class="btn secondary small" onclick="editCollection('${key}','${x.id}')">編輯</button><button class="btn danger small" onclick="removeItem('${key}','${x.id}')">刪除</button></div></div>`).join(""):'<div class="empty">仲未有紀錄，按上面按鈕新增 ♡</div>'}
  </div>`;
 }
+
 function addCollection(key,id=null){
  const p=current(),old=id?p[key].find(x=>x.id===id):null;
- const title=prompt("標題：",old?.title||"");if(title===null)return;
- const content=prompt("內容：",old?.content||"");if(content===null)return;
- const url=prompt("參考網址（可留空）：",old?.url||"");if(url===null)return;
- if(old)Object.assign(old,{title,content,url});
- else p[key].unshift({id:uid(),title,content,url,date:Date.now()});
- save();renderTab();
+ const titleMap={notes:"新增筆記",market:"新增市場研究"};
+ openForm(old?"編輯紀錄":(titleMap[key]||"新增紀錄"),[
+  {label:"標題",value:old?.title||"",required:true},
+  {label:"內容",type:"textarea",value:old?.content||""},
+  {label:"參考網址（可留空）",value:old?.url||"",placeholder:"https://..."}
+ ],values=>{
+  const [title,content,url]=values;
+  if(old)Object.assign(old,{title,content,url});
+  else p[key].unshift({id:uid(),title,content,url,date:Date.now()});
+  save();renderTab();
+ });
 }
+
 function editCollection(key,id){addCollection(key,id)}
 function removeItem(key,id){
  if(confirm("確定刪除呢項紀錄？")){
@@ -369,18 +419,25 @@ function moneyTotal(){
  const totals={};current().finance.forEach(x=>totals[x.currency]=(totals[x.currency]||0)+Number(x.amount||0));
  return Object.entries(totals).map(([k,v])=>k+" "+v.toFixed(0)).join(" / ")||"0";
 }
+
 function addFinance(id=null){
  const p=current(),old=id?p.finance.find(x=>x.id===id):null;
- const title=prompt("項目名稱：",old?.title||"");if(title===null)return;
- const amount=prompt("金額：",old?.amount||"");if(amount===null)return;
- if(!Number.isFinite(Number(amount))||Number(amount)<0){alert("請輸入有效金額");return}
- const currency=prompt("幣種：CAD / HKD / JPY / CNY",old?.currency||"CAD");if(currency===null)return;
- const type=prompt("類型：預算／支出／收入",old?.type||"支出");if(type===null)return;
- const note=prompt("備註：",old?.note||"");if(note===null)return;
- const data={title,amount:Number(amount),currency,type,note};
- if(old)Object.assign(old,data);else p.finance.unshift({id:uid(),...data,date:Date.now()});
- save();renderTab();
+ openForm(old?"編輯財務紀錄":"新增財務紀錄",[
+  {label:"項目名稱",value:old?.title||"",required:true},
+  {label:"金額",type:"number",value:old?.amount??"",required:true},
+  {label:"幣種",type:"select",value:old?.currency||"CAD",options:selectOptions(["CAD","HKD","USD","JPY","CNY","EUR"])},
+  {label:"類型",type:"select",value:old?.type||"支出",options:selectOptions(["預算","支出","收入"])},
+  {label:"備註",type:"textarea",value:old?.note||""}
+ ],values=>{
+  const [title,amountText,currency,type,note]=values;
+  const amount=Number(amountText);
+  if(!Number.isFinite(amount)||amount<0){alert("請輸入有效金額");return}
+  const data={title,amount,currency,type,note};
+  if(old)Object.assign(old,data);else p.finance.unshift({id:uid(),...data,date:Date.now()});
+  save();renderTab();
+ });
 }
+
 function renderTodos(){
  const p=current();
  document.getElementById("tabContent").innerHTML=`
@@ -392,15 +449,21 @@ function renderTodos(){
  </div>`).join(""):'<div class="empty">暫時沒有待辦事項 ✨</div>'}
  </div>`;
 }
+
 function addTodo(id=null){
  const p=current(),old=id?p.todos.find(x=>x.id===id):null;
- const title=prompt("待辦事項：",old?.title||"");if(title===null)return;
- const note=prompt("備註：",old?.note||"");if(note===null)return;
- const priority=prompt("優先程度：高／中／低",old?.priority||"中");if(priority===null)return;
- if(old)Object.assign(old,{title,note,priority});
- else p.todos.unshift({id:uid(),title,note,priority,done:false});
- save();renderTab();
+ openForm(old?"編輯待辦事項":"新增待辦事項",[
+  {label:"待辦事項",value:old?.title||"",required:true},
+  {label:"備註",type:"textarea",value:old?.note||""},
+  {label:"優先程度",type:"select",value:old?.priority||"中",options:selectOptions(["高","中","低"])}
+ ],values=>{
+  const [title,note,priority]=values;
+  if(old)Object.assign(old,{title,note,priority});
+  else p.todos.unshift({id:uid(),title,note,priority,done:false});
+  save();renderTab();
+ });
 }
+
 function toggleTodo(id){
  const x=current().todos.find(x=>x.id===id);x.done=!x.done;save();renderTab();
 }
@@ -448,17 +511,23 @@ function renderTimeline(){
  </div>`).join(""):'<div class="empty">每個 Project 嘅重要進度，都可以記錄喺呢度 ♡</div>'}
  </div>`;
 }
+
 function addTimeline(id=null){
  const p=current(),old=id?p.timeline.find(x=>x.id===id):null;
- const title=prompt("事件名稱：",old?.title||"");if(title===null)return;
- const content=prompt("事件內容：",old?.content||"");if(content===null)return;
- const d=prompt("日期（YYYY-MM-DD）：",old?dateText(old.date):new Date().toISOString().slice(0,10));if(d===null)return;
- const date=new Date(d+"T12:00:00").getTime();
- if(!Number.isFinite(date)){alert("日期格式不正確");return}
- if(old)Object.assign(old,{title,content,date});
- else p.timeline.unshift({id:uid(),title,content,date});
- save();renderTab();
+ openForm(old?"編輯時間線事件":"新增時間線事件",[
+  {label:"事件名稱",value:old?.title||"",required:true},
+  {label:"事件內容",type:"textarea",value:old?.content||""},
+  {label:"日期",type:"date",value:old?new Date(old.date).toISOString().slice(0,10):new Date().toISOString().slice(0,10),required:true}
+ ],values=>{
+  const [title,content,d]=values;
+  const date=new Date(d+"T12:00:00").getTime();
+  if(!Number.isFinite(date)){alert("日期格式不正確");return}
+  if(old)Object.assign(old,{title,content,date});
+  else p.timeline.unshift({id:uid(),title,content,date});
+  save();renderTab();
+ });
 }
+
 function exportData(){
  const blob=new Blob([JSON.stringify({version:1,projects},null,2)],{type:"application/json"});
  const url=URL.createObjectURL(blob);
