@@ -178,13 +178,13 @@ footer{text-align:center;color:#c2a9b2;font-size:11px;padding:25px}
    <div id="detailMeta"></div>
   </div>
   <div class="tabs" id="tabs">
-   <button class="tab active" onclick="showTab('overview',this)">🏡 概覽</button>
-   <button class="tab" onclick="showTab('notes',this)">📝 筆記</button>
-   <button class="tab" onclick="showTab('market',this)">🔍 市場研究</button>
-   <button class="tab" onclick="showTab('finance',this)">💰 財務預算</button>
-   <button class="tab" onclick="showTab('todos',this)">☑️ 待辦事項</button>
-   <button class="tab" onclick="showTab('inspire',this)">🌷 靈感收藏</button>
-   <button class="tab" onclick="showTab('timeline',this)">📅 時間線</button>
+   <button class="tab active" data-tab="overview" onclick="showTab('overview',this)">🏡 概覽</button>
+   <button class="tab" data-tab="notes" onclick="showTab('notes',this)">📝 筆記</button>
+   <button class="tab" data-tab="market" onclick="showTab('market',this)">🔍 市場研究</button>
+   <button class="tab" data-tab="finance" onclick="showTab('finance',this)">💰 財務預算</button>
+   <button class="tab" data-tab="todos" onclick="showTab('todos',this)">☑️ 待辦事項</button>
+   <button class="tab" data-tab="inspire" onclick="showTab('inspire',this)">🌷 靈感收藏</button>
+   <button class="tab" data-tab="timeline" onclick="showTab('timeline',this)">📅 時間線</button>
   </div>
   <div id="tabContent"></div>
  </section>
@@ -358,12 +358,12 @@ function renderTab(){
   el.innerHTML=`
   <div class="panel"><h3>🌷 Project 概覽</h3>
    <div class="form-grid">
-    ${overviewCard("📝 筆記",p.notes.length)}
-    ${overviewCard("🔍 市場研究",p.market.length)}
-    ${overviewCard("💰 財務紀錄",p.finance.length)}
-    ${overviewCard("☑️ 待辦事項",p.todos.length)}
-    ${overviewCard("🌸 靈感收藏",p.inspire.length)}
-    ${overviewCard("📅 時間線",p.timeline.length)}
+    ${overviewCard("notes","📝 筆記",p.notes.length)}
+    ${overviewCard("market","🔍 市場研究",p.market.length)}
+    ${overviewCard("finance","💰 財務紀錄",p.finance.length)}
+    ${overviewCard("todos","☑️ 待辦事項",p.todos.length)}
+    ${overviewCard("inspire","🌸 靈感收藏",p.inspire.length)}
+    ${overviewCard("timeline","📅 時間線",p.timeline.length)}
    </div>
   </div>
   <div class="panel"><h3>💭 Project 想法</h3><p class="muted">${esc(p.desc||"可以喺編輯 Project 加入簡介。")}</p></div>`;
@@ -375,8 +375,13 @@ function renderTab(){
  if(currentTab==="inspire")renderInspire();
  if(currentTab==="timeline")renderTimeline();
 }
-function overviewCard(title,n){
- return `<div class="item" style="text-align:center"><div class="muted">${title}</div><strong style="font-size:22px;color:var(--deep)">${n}</strong></div>`;
+function overviewCard(tab,title,n){
+ return `<div class="item overview-shortcut" role="button" tabindex="0" aria-label="前往${title}" onclick="goToTab('${tab}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goToTab('${tab}')}" style="text-align:center;cursor:pointer;transition:transform .15s,box-shadow .15s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 5px 16px rgba(0,0,0,.09)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+ <div class="muted">${title}</div><strong style="font-size:22px;color:var(--deep)">${n}</strong><div class="muted" style="font-size:12px;margin-top:6px">點擊前往 →</div></div>`;
+}
+function goToTab(tab){
+ const btn=document.querySelector(`#tabs .tab[data-tab="${tab}"]`);
+ if(btn)showTab(tab,btn);
 }
 function renderCollection(key,title,addLabel,placeholder1,placeholder2){
  const p=current(),items=p[key]||[];
